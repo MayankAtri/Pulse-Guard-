@@ -1,0 +1,233 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+enum WorkspaceRole {
+  OWNER
+  ADMIN
+  VIEWER
+}
+
+enum IncidentStatus {
+  OPEN
+  RESOLVED
+}
+
+enum MonitorErrorType {
+  TIMEOUT
+  DNS_ERROR
+  CONNECTION_ERROR
+  HTTP_4XX
+  HTTP_5XX
+  KEYWORD_MISMATCH
+  UNKNOWN
+}
+
+enum IncidentEventType {
+  OPENED
+  RESOLVED
+}
+
+enum NotificationType {
+  INCIDENT_OPENED
+  INCIDENT_RESOLVED
+}
+
+enum NotificationStatus {
+  SENT
+  FAILED
+}
+
+enum NotificationChannel {
+  EMAIL
+  SLACK
+}
+
+model User {
+  id                      String             @id @default(uuid())
+  email                   String             @unique
+  passwordHash            String?
+  name                    String
+  emailVerifiedAt         DateTime?
+  googleSubject           String?            @unique
+  failedLoginAttempts     Int                @default(0)
+  lockoutUntil            DateTime?
+  createdAt               DateTime           @default(now())
+  updatedAt               DateTime           @updatedAt
+  memberships             WorkspaceMember[]
+  monitorCreated          Monitor[]          @relation("monitor_created_by")
+  refreshSessions         RefreshSession[]
+  passwordResetTokens     PasswordResetToken[]
+  createdWorkspaces       Workspace[]        @relation("workspace_created_by")
+}
+
+model RefreshSession {
+  id            String   @id @default(uuid())
+  userId        String
+  tokenHash     String
+  userAgent     String?
+  ipAddress     String?
+  createdAt     DateTime @default(now())
+  expiresAt     DateTime
+  revokedAt     DateTime?
+  user          User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([expiresAt])
+}
+
+model PasswordResetToken {
+  id          String   @id @default(uuid())
+  userId      String
+  tokenHash   String
+  expiresAt   DateTime
+  usedAt      DateTime?
+  createdAt   DateTime @default(now())
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([expiresAt])
+}
+
+model Workspace {
+  id              String             @id @default(uuid())
+  name            String
+  createdByUserId String
+  slackWebhookUrl String?
+  slackEnabled    Boolean            @default(false)
+  createdAt       DateTime           @default(now())
+  updatedAt       DateTime           @updatedAt
+  createdBy       User               @relation("workspace_created_by", fields: [createdByUserId], references: [id])
+  members         WorkspaceMember[]
+  monitors        Monitor[]
+  checks          MonitorCheck[]
+  incidents       Incident[]
+  incidentEvents  IncidentEvent[]
+  notifications   Notification[]
+
+  @@index([createdByUserId])
+}
+
+model WorkspaceMember {
+  id          String        @id @default(uuid())
+  workspaceId String
+  userId      String
+  role        WorkspaceRole
+  joinedAt    DateTime      @default(now())
+  workspace   Workspace     @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  user        User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([workspaceId, userId])
+  @@index([workspaceId])
+  @@index([userId])
+}
+
+model Monitor {
+  id                 String           @id @default(uuid())
+  workspaceId        String
+  createdByUserId    String
+  name               String
+  url                String
+  method             String           @default("GET")
+  headersJson        Json?
+  bodyJson           Json?
+  expectedStatus     Int              @default(200)
+  expectedKeyword    String?
+  timeoutMs          Int              @default(5000)
+  intervalSeconds    Int              @default(60)
+  consecutiveFails   Int              @default(0)
+  consecutiveSuccess Int              @default(0)
+  lastStateUp        Boolean?
+  isPaused           Boolean          @default(false)
+  deletedAt          DateTime?
+  createdAt          DateTime         @default(now())
+  updatedAt          DateTime         @updatedAt
+  workspace          Workspace        @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  createdBy          User             @relation("monitor_created_by", fields: [createdByUserId], references: [id])
+  checks             MonitorCheck[]
+  incidents          Incident[]
+
+  @@index([workspaceId])
+  @@index([createdByUserId])
+  @@index([deletedAt])
+  @@index([workspaceId, deletedAt])
+}
+
+model MonitorCheck {
+  id              String           @id @default(uuid())
+  workspaceId     String
+  monitorId       String
+  checkedAt       DateTime         @default(now())
+  isUp            Boolean
+  statusCode      Int?
+  responseTimeMs  Int?
+  errorType       MonitorErrorType?
+  errorMessage    String?
+  monitor         Monitor          @relation(fields: [monitorId], references: [id], onDelete: Cascade)
+  workspace       Workspace        @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+
+  @@index([workspaceId])
+  @@index([monitorId])
+  @@index([checkedAt])
+}
+
+model Incident {
+  id               String         @id @default(uuid())
+  workspaceId      String
+  monitorId        String
+  status           IncidentStatus @default(OPEN)
+  startedAt        DateTime       @default(now())
+  resolvedAt       DateTime?
+  durationSeconds  Int?
+  failureReason    String
+  createdAt        DateTime       @default(now())
+  updatedAt        DateTime       @updatedAt
+  monitor          Monitor        @relation(fields: [monitorId], references: [id], onDelete: Cascade)
+  workspace        Workspace      @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  events           IncidentEvent[]
+  notifications    Notification[]
+
+  @@index([workspaceId])
+  @@index([monitorId])
+  @@index([status])
+}
+
+model IncidentEvent {
+  id            String             @id @default(uuid())
+  workspaceId   String
+  incidentId    String
+  type          IncidentEventType
+  details       String?
+  createdAt     DateTime           @default(now())
+  workspace     Workspace          @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  incident      Incident           @relation(fields: [incidentId], references: [id], onDelete: Cascade)
+
+  @@index([workspaceId])
+  @@index([incidentId])
+  @@index([createdAt])
+}
+
+model Notification {
+  id            String             @id @default(uuid())
+  workspaceId   String
+  incidentId    String
+  type          NotificationType
+  channel       NotificationChannel @default(EMAIL)
+  status        NotificationStatus
+  sentAt        DateTime?
+  error         String?
+  createdAt     DateTime           @default(now())
+  workspace     Workspace          @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  incident      Incident           @relation(fields: [incidentId], references: [id], onDelete: Cascade)
+
+  @@index([workspaceId])
+  @@index([incidentId])
+  @@index([incidentId, type, channel])
+  @@index([createdAt])
+}

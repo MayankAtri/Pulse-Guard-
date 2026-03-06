@@ -1,0 +1,155 @@
+{
+  "info": {
+    "_postman_id": "2ea0ce84-cfa9-4748-8da6-3c39d6ce0001",
+    "name": "PulseGuard API",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "item": [
+    {
+      "name": "Health",
+      "item": [
+        {
+          "name": "GET /health",
+          "request": { "method": "GET", "url": "{{baseUrl}}/health" }
+        },
+        {
+          "name": "GET /ready",
+          "request": { "method": "GET", "url": "{{baseUrl}}/ready" }
+        },
+        {
+          "name": "POST /mock/toggle",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n  \"healthy\": false,\n  \"body\": \"forced down\"\n}" },
+            "url": "{{baseUrl}}/mock/toggle"
+          }
+        }
+      ]
+    },
+    {
+      "name": "Workspaces",
+      "item": [
+        {
+          "name": "GET /api/workspaces",
+          "request": { "method": "GET", "url": "{{baseUrl}}/api/workspaces" }
+        },
+        {
+          "name": "POST /api/workspaces",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n  \"name\": \"Second Workspace\"\n}" },
+            "url": "{{baseUrl}}/api/workspaces"
+          }
+        }
+      ]
+    },
+    {
+      "name": "Monitors",
+      "item": [
+        {
+          "name": "GET /api/workspaces/:id/monitors",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/api/workspaces/{{workspaceId}}/monitors"
+          }
+        },
+        {
+          "name": "POST /api/workspaces/:id/monitors (HealNet)",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"HealNet Health\",\n  \"url\": \"https://heal-net.onrender.com/health\",\n  \"expectedStatus\": 200,\n  \"expectedKeyword\": \"ok\",\n  \"timeoutMs\": 5000\n}"
+            },
+            "url": "{{baseUrl}}/api/workspaces/{{workspaceId}}/monitors"
+          }
+        },
+        {
+          "name": "POST /api/workspaces/:id/monitors/:monitorId/run-check",
+          "request": {
+            "method": "POST",
+            "url": "{{baseUrl}}/api/workspaces/{{workspaceId}}/monitors/{{monitorId}}/run-check"
+          }
+        },
+        {
+          "name": "GET /api/workspaces/:id/monitors/:monitorId/checks",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/api/workspaces/{{workspaceId}}/monitors/{{monitorId}}/checks?limit=20"
+          }
+        },
+        {
+          "name": "PUT /api/workspaces/:id/monitors/:monitorId",
+          "request": {
+            "method": "PUT",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n  \"isPaused\": true\n}" },
+            "url": "{{baseUrl}}/api/workspaces/{{workspaceId}}/monitors/{{monitorId}}"
+          }
+        },
+        {
+          "name": "DELETE /api/workspaces/:id/monitors/:monitorId",
+          "request": {
+            "method": "DELETE",
+            "url": "{{baseUrl}}/api/workspaces/{{workspaceId}}/monitors/{{monitorId}}"
+          }
+        }
+      ]
+    },
+    {
+      "name": "Incidents",
+      "item": [
+        {
+          "name": "GET /api/workspaces/:id/incidents",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/api/workspaces/{{workspaceId}}/incidents"
+          }
+        },
+        {
+          "name": "GET /api/workspaces/:id/incidents/:incidentId",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/api/workspaces/{{workspaceId}}/incidents/{{incidentId}}"
+          }
+        }
+      ]
+    },
+    {
+      "name": "Notifications",
+      "item": [
+        {
+          "name": "GET /api/workspaces/:id/notifications",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/api/workspaces/{{workspaceId}}/notifications"
+          }
+        }
+      ]
+    },
+    {
+      "name": "Admin",
+      "item": [
+        {
+          "name": "GET /api/admin/queue-stats",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/api/admin/queue-stats"
+          }
+        },
+        {
+          "name": "POST /api/admin/run-checks",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n  \"workspaceId\": \"{{workspaceId}}\"\n}" },
+            "url": "{{baseUrl}}/api/admin/run-checks"
+          }
+        }
+      ]
+    }
+  ]
+}
